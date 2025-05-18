@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Rainbow6 Roadpal</title>
+        <link rel="stylesheet" href="bootstrap.min.css">
+        <link rel="stylesheet" href="style.css">
+        <script src="script.js"></script>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+        <script src="bootstrap.bundle.min.js"></script>
+    </head>
+
+    <body data-bs-theme="dark">
+        <div class="container-fluid nav align-items-center">
+            <div class="dropdown">
+                <img alt="lang-icon" src="images/language.png" role="button" data-bs-toggle="dropdown">
+                <ul class="dropdown-menu" id="language-btns-container">
+                    <li><button class="language-btn">EN - English</button></li>
+                    <li><button class="language-btn">DE - Deutch</button></li>
+                    <li><button class="language-btn">SI - Slovenian</button></li>
+                    <li><button class="language-btn">简体中文</button></li>
+                </ul>
+            </div>
+            <h1 data-i18n="reports-title">REPORTS PANEL:</h1>
+        </div>
+
+        <div class="container-fluid" id="nav">
+            <a href="index.html"><button class="btn"><img src="images/back.png" style="width: 3rem; height: 3rem;"></button></a>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                <div class="col-12 title">
+                    <h1 data-i18n="send-report-title">SEND REPORT:</h1>
+                </div>
+            </div>
+
+            <div class="row" id="widgets">
+                <div class="col-12 btn-box">
+                    <button class="btn btn-warning widget-btn" data-i18n="trafficjam-btn">Traffic Jam</button>
+                </div>
+                <div class="col-12 btn-box">
+                    <button class="btn btn-info widget-btn" data-i18n="roadwork-btn">Road Work Ahead</button>
+                </div>
+                <div class="col-12 btn-box">
+                    <button class="btn btn-danger widget-btn" data-i18n="obstacle-btn">Obstacle On The Road</button>
+                </div>
+                <div class="col-12 btn-box">
+                    <button class="btn btn-warning widget-btn" data-i18n="roadclosed-btn">Road Closed</button>
+                </div>
+                <div class="col-12 btn-box">
+                    <button class="btn btn-danger widget-btn" data-i18n="police-btn">Police Control</button>
+                </div>
+            </div>
+
+            <div class="container">
+                <div class="row">
+                    <div id="alert-container">
+                        <div class="col-12">
+                            <div class="alert alert-success success" role="alert" id="success-alert" hidden data-i18n="success-alert">
+                                [+] SIGNAL HAS BEEN SENT SUCCESSFULLY!
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-primary info" role="alert" id="pending-alert" hidden data-i18n="info-alert">
+                                [...] Sending Signal...
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-danger error" role="alert" id="fail-alert" hidden data-i18n="fail-alert">
+                                [-]
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-danger error prox" role="alert" id="fail-alert" hidden data-i18n="proximity-error">
+                                [-] A Signal Of The Specified Type Already Exists In Your Proximity.
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-danger error geo" role="alert" id="fail-alert" hidden data-i18n="geolocation-error">
+                                [-] Please Allow Geolocation Access!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script src="language.js"></script> 
+</html>

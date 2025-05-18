@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rainbow6 Roadpal</title>
+    <link rel="stylesheet" href="bootstrap.min.css">
+        <script src="leaflet.js"></script>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="bootstrap.bundle.min.js"></script>
+        <link rel="stylesheet" href="style.css">
+</head>
+
+<body data-bs-theme="dark">
+    <div class="container-fluid nav align-items-center">
+            <div class="dropdown">
+    <img alt="lang-icon" src="images/language.png" role="button" data-bs-toggle="dropdown" class="dropdown-toggle">
+    <ul class="dropdown-menu" id="language-btns-container">
+        <li><button class="language-btn dropdown-item">EN - English</button></li>
+        <li><button class="language-btn dropdown-item">DE - Deutsch</button></li>
+        <li><button class="language-btn dropdown-item">SI - Slovenian</button></li>
+        <li><button class="language-btn dropdown-item">简体中文</button></li>
+    </ul>
+</div>
+
+            <h1 data-i18n="map-title">MAP:</h1>
+    </div>
+
+    <div class="container">
+        <div id="map-container"></div>
+    </div>
+    <script>
+        let map = L.map("map-container").setView([49.2125578, 16.62662018], 14);
+        document.addEventListener("DOMContentLoaded", async function () {
+            try {
+                const res = await fetch('/api/maptiler-key');
+                const data = await res.json();
+                const key = data.key;
+
+                L.tileLayer(
+                    `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${key}`,
+                    {
+                        attribution:
+                            '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> ' +
+                            '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+                        tileSize: 512,
+                        zoomOffset: -1,
+                        minZoom: 1,
+                        crossOrigin: true,
+                    }
+                ).addTo(map);
+                f=true;
+            } catch (err) {
+                console.error("Failed to fetch map key:", err);
+                alert("Could not load map due to key error.");
+                
+            }
+        });
+
+
+        // =========================================================================
+
+        navigator.geolocation.watchPosition(success, error);
+
+        let marker, circle, zoomed;
+
+        let speechEnabled = false;
+        document.body.addEventListener("click", () => {
+            speechEnabled = true;
+        });
+
+
+        function success(pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const accuracy = pos.coords.accuracy;
+            
+            checkPositions(lat, lng);
+            hideErrors();
+
+            if (marker) {
+                map.removeLayer(marker);
+                map.removeLayer(circle);
+            }
+
+            marker = L.marker([lat, lng]).addTo(map);
+            circle = L.circle([lat, lng], { radius: accuracy }).addTo(map);
+
+            if (!zoomed) {
+                zoomed = true;
+                map.fitBounds(circle.getBounds());
+            }
+
+            map.setView([lat, lng]);
+        }
+
+        function error(err) {
+            if (err.code === 1) {
+                showError("[-] Please Allow Geolocation Access");
+            } else {
+                showError("[-] Cannot Get Current Location");
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const apiUrl = "https://api.thingspeak.com/channels/2966525/feeds.json";
+
+            fetch(apiUrl)
+                .then((res) => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.json();
+                })
+                .then((data) => {
+                    console.log("Full API response:", data);
+
+                    if (!data.feeds || !Array.isArray(data.feeds)) {
+                        throw new Error("Invalid data format - feeds array not found");
+                    }
+
+                    data.feeds.forEach((feed) => {
+                        console.log("Processing feed:", feed);
+
+                        if (
+                            isNaN(parseFloat(feed.field3)) ||
+                            isNaN(parseFloat(feed.field4)) ||
+                            isNaN(parseFloat(feed.field5)) ||
+                            isNaN(parseFloat(feed.field6)) ||
+                            isNaN(parseFloat(feed.field7))
+                        ) {
+                            console.warn("Incomplete or invalid feed data:", feed);
+                            return;
+                        }
+
+                        createMarker(
+                            parseInt(feed.field3),
+                            parseFloat(feed.field4),
+                            parseFloat(feed.field5),
+                            parseFloat(feed.field6),
+                            parseFloat(feed.field7)
+                        );
+                    });
+                })
+                .catch((error) => {
+                    console.error("Error fetching or processing data:", error);
+                    showError("[-] Error Loading Data: " + console.error);
+                });
+        });
+
+        const trafficJamIcon = L.icon({
+            iconUrl: 'images/traffic_jam.png',
+            iconSize: [38, 38],
+            iconAnchor: [19, 38],
+            popupAnchor: [0, -38]
+        });
+
+        const constructionOnRoadIcon = L.icon({
+            iconUrl: 'images/road_work.png',
+            iconSize: [38, 38],
+            iconAnchor: [19, 38],
+            popupAnchor: [0, -38]
+        });
+
+        const obstacleOnRoadIcon = L.icon({
+            iconUrl: 'images/obstacle.png',
+            iconSize: [38, 38],
+            iconAnchor: [19, 38],
+            popupAnchor: [0, -38]
+        });
+
+        const roadClosedIcon = L.icon({
+            iconUrl: 'images/road_closed.png',
+            iconSize: [38, 38],
+            iconAnchor: [19, 38],
+            popupAnchor: [0, -38]
+        });
+
+        const policeControlIcon = L.icon({
+            iconUrl: 'images/police.png',
+            iconSize: [38, 38],
+            iconAnchor: [19, 38],
+            popupAnchor: [0, -38]
+        });
+
+        async function checkPositions(userLat, userLng, thresholdMeters = 25) {
+            const apiUrl = "https://api.thingspeak.com/channels/2966525/feeds.json?results=100";
+            try {
+                const res = await fetch(apiUrl);
+                const data = await res.json();
+                const feeds = data.feeds;
+
+                let nearby = false;
+                let nearbyId = null;
+
+                for (const feed of feeds) {
+                    const feedId = parseFloat(feed.field3);
+                    const markerLat = parseFloat(feed.field4);
+                    const markerLng = parseFloat(feed.field5);
+
+                    if (!isNaN(markerLat) && !isNaN(markerLng)) {
+                        const dist = getDistanceMeters(userLat, userLng, markerLat, markerLng);
+                        if (dist < thresholdMeters) {
+                            nearby = true;
+                            nearbyId = feedId;
+                            break;
+                        }
+                    }
+                }
+
+                if (nearby) {
+                    let voice="Obsticale";
+                    const synth = window.speechSynthesis;
+                    switch (nearbyId) {
+                        case 1:
+                            showError("[-] Traffic Jam nearby");
+                            voice="Traffic jam";
+                            break;
+                        case 2:
+                            showError("[-] Road Work nearby");
+                            voice="Road work";
+                            break;
+                        case 3:
+                            showError("[-] Obsticale on Road is nearby");
+                            break;
+                        case 4:
+                            showError("[-] Closed Road nearby");
+                            voice="Closed road";
+                            break;
+                        case 5:
+                            showError("[-] Police control nearby");
+                            voice="Police control";
+                            break;
+                        default:
+                            showError("[-] Undifined Marker nearby");
+                            break;
+                    }
+                    if(speechEnabled){
+                        const utterThis = new SpeechSynthesisUtterance(`${voice} detected nearby`);
+                        synth.speak(utterThis);
+                        utterThis.lang = 'EN';
+                    }
+                } else {
+                    hideErrors();
+                }
+            } catch (err) {
+                console.error("Error checking proximity:", err);
+                showError("[-] Failed to check for nearby markers.");
+            }
+        }
+
+        function getDistanceMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c;
+        }
+
+        function createMarker(idType, lat, lng, accuracy, cooldown) {
+            console.log("Creating marker with:", idType, lat, lng, accuracy, cooldown);
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                let otherMarker;
+                let markerOptions = {
+                    icon: roadClosedIcon
+                };
+
+                switch (idType) {
+                    case 1:
+                        otherMarker = L.marker([lat, lng], { icon: trafficJamIcon }).addTo(map);
+                        break;
+                    case 2:
+                        otherMarker = L.marker([lat, lng], { icon: constructionOnRoadIcon }).addTo(map);
+                        break;
+                    case 3:
+                        otherMarker = L.marker([lat, lng], { icon: obstacleOnRoadIcon }).addTo(map);
+                        break;
+                    case 4:
+                        otherMarker = L.marker([lat, lng], { icon: roadClosedIcon }).addTo(map);
+                        break;
+                    case 5:
+                        otherMarker = L.marker([lat, lng], { icon: policeControlIcon }).addTo(map);
+                        break;
+                }
+
+                // Add popup with information
+                otherMarker.bindPopup(`
+                    <b>Marker Info</b><br>
+                    Type: ${idType}<br>
+                    Accuracy: ${accuracy}<br>
+                    Cooldown: ${cooldown}
+                  `);
+            } else {
+                console.warn("Invalid coordinates:", lat, lng);
+            }
+        }
+
+        function showError(err_msg) {
+            const err_alert = document.getElementById("err-alert");
+            err_alert.textContent = err_msg;
+            err_alert.hidden = false;
+        }
+        function hideErrors() {
+            const err_alert = document.getElementById("err-alert");
+            err_alert.hidden = true;
+        }
+    </script>
+
+    </script>
+        <div class="container">
+            <div class="alert alert-danger error" id="err-alert" role="alert" id="fail-alert" hidden data-i18n="main-err-alert">
+                [-]
+            </div>
+        </div>
+
+        <div class="container" id="widget-container">
+            <div class="row">
+                <div class="col-12">
+                    <a href="widgets.html"><button class="btn btn-primary" data-i18n="send-report-btn">SEND REPORT</button></a>
+                </div>
+            </div>
+        </div>
+</body>
+<script src="language.js"></script> 
+</html>
