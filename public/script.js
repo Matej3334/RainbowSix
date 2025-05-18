@@ -45,7 +45,6 @@ function SendRequest(type_id) {
     const cooldown = 24;
 
     const valid = await validSignalRequest(apiUrl, lat, lng, ID);
-    alert(valid);
 
     if(valid){
     try {
